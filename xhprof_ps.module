@@ -1,0 +1,71 @@
+<?php
+/**
+ * @file
+ * Description here.
+ */
+
+/**
+ * hook_menu
+ */
+function xhprof_ps_menu() {
+  $items = array();
+  $items['admin/config/xhprof_ps'] = array(
+    'title' => 'xhprof_ps config',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('xhprof_ps_config_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'xhprof_ps.admin.inc',
+  );
+
+  // return $items;
+}
+
+function xhprof_ps_boot() {
+  if(xhprof_ps_xhprof_enable()) {
+    drupal_register_shutdown_function('xhprof_ps_shut');
+  }
+}
+
+function xhprof_ps_xhprof_enable() {
+  if (variable_get('xhprof_ps_prof', FALSE)) {
+    $run = false;
+    $query = $_GET;
+    //$query = drupal_get_query_parameters();
+    // TODO check if we have mm_xp_run in adresss
+    if(isset($query['mm_xp_run']) && $query['mm_xp_run']) {
+      $run = true;
+    }
+    // TODO if it was provided in a different way
+
+    // todo check if adress was whitelisted
+
+    // todo check if there is space enough
+
+
+    if ( $run && $path = variable_get('xhprof_ps_xhprof_directory', '')) {
+        include_once $path . '/xhprof_lib/utils/xhprof_lib.php';
+        include_once $path . '/xhprof_lib/utils/xhprof_runs.php';
+        xhprof_enable(XHPROF_FLAGS_CPU + XHPROF_FLAGS_MEMORY);
+        return true;
+    }
+  }
+}
+
+function xhprof_ps_shut() {
+  $query = drupal_get_query_parameters();
+  if(!empty($query['run_def'])) {
+    $namespace = $query['run_def'];
+  } else {
+    $namespace = variable_get('site_name', '');
+  }
+  $dir = current_path();
+  str_replace('/','-',$dir);
+
+  $xhprof_data = xhprof_disable();
+  // TODO: add option to place it in root -> visible from XHprof app
+  $data_path = ini_get('xhprof.output_dir') . '/' . $dir;
+  // todo: check disk_free_space($data_path)
+  file_prepare_directory($data_path,FILE_CREATE_DIRECTORY);
+  $xhprof_runs = new XHProfRuns_Default($data_path);
+  return $xhprof_runs->save_run($xhprof_data, $namespace);
+}

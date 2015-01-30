@@ -1,0 +1,5 @@
+name = xhprof_ps
+description = simple xhprof performance statistics
+core = 7.x
+#dependencies[] = devel
+#configure = admin/config/xhprof_ps
